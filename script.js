@@ -308,6 +308,56 @@
     if (window.lucide) window.lucide.createIcons();
   }
 
+  async function copyTextToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+  }
+
+  function flashButtonSuccess(btn, originalHtml) {
+    if (!btn) return;
+    btn.innerHTML = `<i data-lucide="check" style="width:15px;height:15px;"></i>✓ コピーしました`;
+    icons();
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      icons();
+    }, 2200);
+  }
+
+  function animateCountUp(el, target, suffix) {
+    // タブが非表示（バックグラウンド）でも進行するよう setTimeout で刻む（rAFは非表示タブで停止するため使わない）
+    if (!el) return;
+    const duration = 700;
+    const stepMs = 30;
+    const start = Date.now();
+    function tick() {
+      const p = clamp((Date.now() - start) / duration, 0, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(target * eased) + (suffix || "");
+      if (p < 1) setTimeout(tick, stepMs);
+    }
+    tick();
+  }
+
+  function buildResultSummaryText(r) {
+    const top = r.ranking[0];
+    const topBiz = bizById(top.bizId);
+    return [
+      "【管理職AIクエスト】診断結果",
+      `週あたり ${minutesToHM(r.totalRecovered)} の時間を取り戻せる可能性があります`,
+      `AI LEVEL ${r.level}「${r.levelLabel}」／TIME RECOVERY SCORE ${r.score}/100`,
+      `称号：${r.achievement}`,
+      `最優先ターゲット：${topBiz.name}（${minutesToHM(top.recovered)} RECOVER）`,
+    ].join("\n");
+  }
+
   function el(html) {
     const t = document.createElement("template");
     t.innerHTML = html.trim();
@@ -557,9 +607,22 @@
     else if (totalRecovered < 180) achievement = "AI委任マネージャー";
     else achievement = "TIME ARCHITECT";
 
+    // Q1（管理業務全体の時間）に対する、選択業務の占有率
+    const totalManagementTime = answers.common_time != null ? answers.common_time : totalCurrent;
+    const shareOfTotal = totalManagementTime > 0 ? clamp(totalCurrent / totalManagementTime, 0, 1) : null;
+
+    // ステータス確定（STATUS画面で「???」だった項目の答え合わせ）
+    const subsLabelMap = { 2: "1〜3人", 5: "4〜6人", 8.5: "7〜10人", 13: "11人以上" };
+    const statusReveal = {
+      subs: answers.weekly_subs != null ? subsLabelMap[answers.weekly_subs] : "対象外の業務",
+      level, levelLabel: LEVEL_LABELS[level],
+      score,
+    };
+
     return {
       gf, businessResults, ranking, totalCurrent, totalAfter, totalRecovered,
       level, levelLabel: LEVEL_LABELS[level], score, achievement,
+      totalManagementTime, shareOfTotal, statusReveal,
     };
   }
 
@@ -791,9 +854,6 @@ ${(() => {
 
   function renderStart() {
     gaugeWrap.classList.add("hidden");
-    const resume = loadState();
-    const hasResume = resume && resume.selectedBusinesses && resume.selectedBusinesses.length && resume.screen !== "start";
-
     root.innerHTML = "";
     root.appendChild(el(`
       <div class="screen start-screen">
@@ -803,7 +863,6 @@ ${(() => {
         <button class="btn btn-primary quest-start-btn" id="btn-quest-start">
           QUEST START <span class="quest-start-sub">（3分診断を始める）</span>
         </button>
-        ${hasResume ? `<div style="margin-top:14px;"><button class="btn btn-ghost" id="btn-resume">前回の続きから再開する</button></div>` : ""}
         <div class="start-facts">
           <div class="start-fact"><i data-lucide="user-x"></i>登録不要</div>
           <div class="start-fact"><i data-lucide="shield-check"></i>外部送信なし</div>
@@ -821,16 +880,6 @@ ${(() => {
       resetQuest();
       goTo("status");
     });
-    const resumeBtn = document.getElementById("btn-resume");
-    if (resumeBtn) {
-      resumeBtn.addEventListener("click", () => {
-        state.selectedBusinesses = resume.selectedBusinesses;
-        state.answers = resume.answers;
-        state.qIndex = resume.qIndex || 0;
-        state.queue = buildQuestionQueue(state.selectedBusinesses);
-        goTo(resume.screen === "mission1" ? "mission1" : "questions");
-      });
-    }
   }
 
   function resetQuest() {
@@ -855,13 +904,13 @@ ${(() => {
         <div class="status-card">
           <h2>あなたの現在ステータス</h2>
           <div class="status-grid">
-            <div class="status-item"><div class="k">役職</div><div class="v">課長</div></div>
             <div class="status-item"><div class="k">管理人数</div><div class="v pending">???</div></div>
             <div class="status-item"><div class="k">AI活用Lv</div><div class="v pending">???</div></div>
             <div class="status-item"><div class="k">削減余地</div><div class="v pending">???</div></div>
+            <div class="status-item"><div class="k">時間奪還スコア</div><div class="v pending">???</div></div>
           </div>
         </div>
-        <p class="lead" style="margin-top:22px;">これから3分間のクエストで、あなたの「時間泥棒」を特定します。まずは戦う相手を選びましょう。</p>
+        <p class="lead" style="margin-top:22px;">これから3分間のクエストで、あなたの「時間泥棒」を特定します。すべての項目は、あなたの回答から算出されます（自己申告や登録は不要です）。まずは戦う相手を選びましょう。</p>
         <div class="btn-row">
           <button class="btn btn-primary btn-block" id="btn-to-mission1">MISSION 1 へ進む <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
         </div>
@@ -875,6 +924,14 @@ ${(() => {
    * 8. RENDER: MISSION 1 (business select)
    * ---------------------------------------------------------------- */
 
+  function estimateQuestCount(selected) {
+    return COMMON_QUESTIONS.length + selected.reduce((s, id) => s + BUSINESS_QUESTION_SETS[id].length, 0);
+  }
+  function estimateQuestMinutes(selected) {
+    const qCount = estimateQuestCount(selected);
+    return Math.max(1, Math.round((qCount * 12) / 60));
+  }
+
   function renderMission1() {
     updateGauge({ label: "LOST TIME", minutes: null });
     root.innerHTML = "";
@@ -884,6 +941,7 @@ ${(() => {
         <h2 class="title">時間泥棒を選択してください</h2>
         <p class="lead">あなたの時間を奪っている業務を選んでください（複数選択可）</p>
         <div class="biz-grid" id="biz-grid"></div>
+        <div class="quest-estimate" id="quest-estimate"></div>
         <div class="btn-row">
           <button class="btn btn-secondary" id="btn-back-status">戻る</button>
           <button class="btn btn-primary" id="btn-mission1-next" disabled>この業務に挑む <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
@@ -893,17 +951,34 @@ ${(() => {
     root.appendChild(wrap);
 
     const grid = wrap.querySelector("#biz-grid");
+    const estimateBox = wrap.querySelector("#quest-estimate");
+
+    function updateEstimate() {
+      const n = state.selectedBusinesses.length;
+      if (n === 0) {
+        estimateBox.innerHTML = `<i data-lucide="info"></i>業務を選ぶと、想定の設問数と所要時間がここに表示されます`;
+      } else {
+        const qc = estimateQuestCount(state.selectedBusinesses);
+        const mins = estimateQuestMinutes(state.selectedBusinesses);
+        estimateBox.innerHTML = `<i data-lucide="swords"></i>選択中：<b>${n}業務</b> ｜ 想定 <b>${qc}問</b> ｜ 目安 <b>約${mins}分</b>`;
+      }
+      icons();
+    }
+
     BUSINESSES.forEach((b) => {
       const active = state.selectedBusinesses.includes(b.id);
       const card = el(`
         <button type="button" class="biz-card ${active ? "active" : ""}" data-id="${b.id}">
-          <span class="check-badge"><i data-lucide="check"></i></span>
-          <div class="biz-top">
-            <span class="codename">${b.codename}</span>
+          <div class="biz-head">
+            <span class="biz-icon-wrap"><i data-lucide="${b.icon}"></i></span>
+            <span class="check-badge"><i data-lucide="check"></i></span>
+          </div>
+          <span class="codename">${b.codename}</span>
+          <div class="biz-name">${b.name}</div>
+          <div class="biz-foot">
+            <span class="biz-meta"><i data-lucide="clock"></i>${b.freq}</span>
             <span class="rank">RANK ${b.rank}</span>
           </div>
-          <div class="biz-name">${b.name}</div>
-          <div class="biz-meta"><i data-lucide="clock"></i>${b.freq}</div>
           <div class="lock-tag">TARGET LOCKED</div>
         </button>
       `);
@@ -913,10 +988,12 @@ ${(() => {
         else state.selectedBusinesses.push(b.id);
         card.classList.toggle("active");
         nextBtn.disabled = state.selectedBusinesses.length === 0;
+        updateEstimate();
         saveState();
       });
       grid.appendChild(card);
     });
+    updateEstimate();
     icons();
 
     const nextBtn = wrap.querySelector("#btn-mission1-next");
@@ -943,10 +1020,13 @@ ${(() => {
    * ---------------------------------------------------------------- */
 
   function estimateLostTimeSoFar() {
-    // ざっくり現在時点の推定値（common_timeが分かればそれを軸に、進捗で補完）
-    const base = state.answers.common_time || 300;
-    const progress = state.qIndex / Math.max(state.queue.length, 1);
-    return Math.round(base * (0.5 + progress * 0.6));
+    // 結果画面の「現在の合計時間」と同じ計算式を、その時点の回答（未回答は既定値）で実行する。
+    // これによりゲージの数値と結果画面の数値が必ず一致する。
+    if (!state.selectedBusinesses.length) return null;
+    const gf = globalFactors(state.answers);
+    return state.selectedBusinesses.reduce(
+      (sum, id) => sum + computeBusinessResult(id, state.answers, gf).current, 0
+    );
   }
 
   function renderQuestion() {
@@ -955,7 +1035,7 @@ ${(() => {
 
     const businessLabel = q.business ? bizById(q.business) : null;
     const missionLabel = businessLabel ? businessLabel.codename : "COMMON QUEST";
-    const progressPct = Math.round(((state.qIndex) / state.queue.length) * 100);
+    const progressPct = Math.round(((state.qIndex + 1) / state.queue.length) * 100);
 
     updateGauge({ label: "LOST TIME", minutes: estimateLostTimeSoFar(), max: 1200 });
 
@@ -1004,15 +1084,17 @@ ${(() => {
       if (opt) showFeedback(opt);
     }
 
+    let locked = false;
     q.options.forEach((opt) => {
       const isSel = isMulti ? selectedSet.has(opt.value) : savedVal === opt.value;
       const btn = el(`
         <button type="button" class="option-btn ${isSel ? "selected" : ""}" data-val="${opt.value}">
-          <span>${opt.label}</span>
-          <span class="opt-check">${isMulti ? '<i data-lucide="check"></i>' : ""}</span>
+          <span class="opt-mark ${isMulti ? "checkbox" : "radio"}">${isMulti ? '<i data-lucide="check"></i>' : ""}</span>
+          <span class="opt-label">${opt.label}</span>
         </button>
       `);
       btn.addEventListener("click", () => {
+        if (locked) return;
         if (isMulti) {
           if (selectedSet.has(opt.value)) selectedSet.delete(opt.value);
           else selectedSet.add(opt.value);
@@ -1020,12 +1102,14 @@ ${(() => {
           state.answers[q.id] = Array.from(selectedSet);
           saveState();
         } else {
+          locked = true;
+          list.classList.add("locked");
           state.answers[q.id] = opt.value;
           list.querySelectorAll(".option-btn").forEach((b) => b.classList.remove("selected"));
           btn.classList.add("selected");
           showFeedback(opt);
           saveState();
-          setTimeout(() => advanceQuestion(), q.feedback ? 500 : 180);
+          setTimeout(() => advanceQuestion(), q.feedback ? 850 : 320);
         }
       });
       list.appendChild(btn);
@@ -1039,7 +1123,12 @@ ${(() => {
       renderQuestion();
     });
     const nextBtn = wrap.querySelector("#btn-q-next");
-    if (nextBtn) nextBtn.addEventListener("click", () => advanceQuestion());
+    if (nextBtn) nextBtn.addEventListener("click", () => {
+      if (locked) return;
+      locked = true;
+      list.classList.add("locked");
+      advanceQuestion();
+    });
   }
 
   function advanceQuestion() {
@@ -1114,6 +1203,21 @@ ${(() => {
       </div>
     `));
 
+    // --- STATUS UPDATE（STATUS画面の「???」の答え合わせ）---
+    wrap.appendChild(el(`
+      <div class="section-block">
+        <div class="section-title"><i data-lucide="badge-check"></i>STATUS UPDATE ｜ ステータス確定</div>
+        <div class="status-card">
+          <div class="status-grid">
+            <div class="status-item"><div class="k">管理人数</div><div class="v">${r.statusReveal.subs}</div></div>
+            <div class="status-item"><div class="k">AI活用Lv</div><div class="v">Lv.${r.level}</div></div>
+            <div class="status-item"><div class="k">削減余地</div><div class="v">${Math.round((r.totalRecovered / (r.totalCurrent || 1)) * 100)}%</div></div>
+            <div class="status-item"><div class="k">時間奪還スコア</div><div class="v">${r.score}</div></div>
+          </div>
+        </div>
+      </div>
+    `));
+
     // --- Title / Score card ---
     wrap.appendChild(el(`
       <div class="section-block">
@@ -1122,7 +1226,7 @@ ${(() => {
           <div class="tc-name">${r.achievement}</div>
           <div class="tc-desc">AI LEVEL ${r.level}「${r.levelLabel}」</div>
           <div class="tc-score">
-            <div><div class="k">TIME RECOVERY SCORE</div><div class="v">${r.score} / 100</div></div>
+            <div><div class="k">TIME RECOVERY SCORE</div><div class="v" id="score-countup">0 / 100</div></div>
             <div><div class="k">獲得した自由時間</div><div class="v">${minutesToHM(weeklyRecover)}/週</div></div>
           </div>
         </div>
@@ -1130,25 +1234,32 @@ ${(() => {
     `));
 
     // --- Stat row ---
+    const shareLine = r.shareOfTotal != null
+      ? `<div class="share-line"><i data-lucide="pie-chart"></i>選択した業務は、あなたの管理業務全体（${minutesToHM(r.totalManagementTime)}/週の自己申告）のうち約<b>${Math.round(r.shareOfTotal * 100)}%</b>を占めています。</div>`
+      : "";
     wrap.appendChild(el(`
       <div class="section-block">
         <div class="section-title"><i data-lucide="gauge"></i>診断サマリー</div>
         <div class="stat-row">
-          <div class="stat-box"><div class="k">現在の合計時間</div><div class="v">${minutesToHM(r.totalCurrent)}</div></div>
-          <div class="stat-box"><div class="k">AI導入後</div><div class="v">${minutesToHM(r.totalAfter)}</div></div>
-          <div class="stat-box"><div class="k">削減率</div><div class="v">${Math.round((r.totalRecovered / (r.totalCurrent || 1)) * 100)}<small>%</small></div></div>
-          <div class="stat-box"><div class="k">AI LEVEL</div><div class="v">${r.level}<small>/5</small></div></div>
+          <div class="stat-box"><div class="k">現在の合計時間</div><div class="v">${minutesToHM(r.totalCurrent)}</div><div class="note">選択した業務にかかっている時間の合計</div></div>
+          <div class="stat-box"><div class="k">AI導入後</div><div class="v">${minutesToHM(r.totalAfter)}</div><div class="note">AI活用後に想定される時間</div></div>
+          <div class="stat-box"><div class="k">削減率</div><div class="v">${Math.round((r.totalRecovered / (r.totalCurrent || 1)) * 100)}<small>%</small></div><div class="note">現在時間に対する削減の割合</div></div>
+          <div class="stat-box"><div class="k">AI LEVEL</div><div class="v">${r.level}<small>/5</small></div><div class="note">回答から算出した活用度合い</div></div>
         </div>
+        ${shareLine}
       </div>
     `));
 
-    // --- Chart ---
-    wrap.appendChild(el(`
-      <div class="section-block">
-        <div class="section-title"><i data-lucide="bar-chart-3"></i>業務別 削減時間</div>
-        <div class="chart-card"><canvas id="resultChart" height="220"></canvas></div>
-      </div>
-    `));
+    // --- Chart（2業務以上のときのみ、比較する意味があるので表示）---
+    if (r.businessResults.length > 1) {
+      const chartHeight = clamp(r.businessResults.length * 60, 160, 320);
+      wrap.appendChild(el(`
+        <div class="section-block">
+          <div class="section-title"><i data-lucide="bar-chart-3"></i>業務別 削減時間</div>
+          <div class="chart-card"><canvas id="resultChart" height="${chartHeight}"></canvas></div>
+        </div>
+      `));
+    }
 
     // --- Ranking ---
     const rankHtml = r.ranking.map((b, i) => {
@@ -1173,6 +1284,7 @@ ${(() => {
     // --- BOSS BATTLE (top priority) ---
     const top = r.ranking[0];
     const topBiz = bizById(top.bizId);
+    const afterPct = clamp((top.after / (top.current || 1)) * 100, 4, 100);
     wrap.appendChild(el(`
       <div class="section-block">
         <div class="section-title"><i data-lucide="flag"></i>最優先攻略ターゲット</div>
@@ -1180,12 +1292,18 @@ ${(() => {
           <div class="boss-tag">NEXT TARGET</div>
           <div class="boss-code">${topBiz.codename}</div>
           <div class="boss-name">${topBiz.name}</div>
+          <div class="boss-hp-row">
+            <div class="boss-hp-label"><i data-lucide="clock"></i>WORKLOAD</div>
+            <div class="boss-hp-track">
+              <div class="boss-hp-fill" style="width:${afterPct}%"></div>
+            </div>
+          </div>
           <div class="boss-vs">
             <div class="bv-box"><div class="k">現在</div><div class="v">${minutesToHM(top.current)}</div></div>
             <div class="bv-arrow"><i data-lucide="arrow-right"></i></div>
             <div class="bv-box"><div class="k">AI導入後</div><div class="v">${minutesToHM(top.after)}</div></div>
           </div>
-          <div class="boss-recover">${minutesToHM(top.recovered)} RECOVER</div>
+          <div class="boss-recover"><i data-lucide="zap"></i>${minutesToHM(top.recovered)} RECOVER</div>
         </div>
       </div>
     `));
@@ -1208,15 +1326,34 @@ ${(() => {
     // --- actions ---
     wrap.appendChild(el(`
       <div class="result-actions">
+        <button class="btn btn-primary" id="btn-share"><i data-lucide="share-2" style="width:15px;height:15px;"></i>結果をシェア</button>
+        <button class="btn btn-secondary" id="btn-copy-result"><i data-lucide="clipboard-copy" style="width:15px;height:15px;"></i>結果をコピーする</button>
         <button class="btn btn-secondary" id="btn-restart">もう一度診断する</button>
       </div>
     `));
 
     icons();
     renderChart(r);
+    animateCountUp(document.getElementById("score-countup"), r.score, " / 100");
     wrap.querySelector("#btn-restart").addEventListener("click", () => {
       resetQuest();
       goTo("start");
+    });
+
+    const shareText = buildResultSummaryText(r);
+    wrap.querySelector("#btn-share").addEventListener("click", async () => {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "管理職AIクエスト", text: shareText });
+          return;
+        } catch (e) { /* ユーザーがキャンセルした場合など */ }
+      }
+      await copyTextToClipboard(shareText);
+      flashButtonSuccess(document.getElementById("btn-share"), '<i data-lucide="share-2" style="width:15px;height:15px;"></i>結果をシェア');
+    });
+    wrap.querySelector("#btn-copy-result").addEventListener("click", async () => {
+      await copyTextToClipboard(shareText);
+      flashButtonSuccess(document.getElementById("btn-copy-result"), '<i data-lucide="clipboard-copy" style="width:15px;height:15px;"></i>結果をコピーする');
     });
 
     if (weeklyRecover >= 90 && window.confetti) {
@@ -1231,34 +1368,38 @@ ${(() => {
     const biz = bizById(top.bizId);
     let before, after;
     if (biz.id === "weekly") {
-      before = ["読む", "重要事項探し", "問題探し", "まとめる", "文章作成", "判断"];
+      before = ["読む", "重要事項・リスク探し", "問題探し", "まとめる", "文章作成", "判断"];
       after = [
-        { t: "入力", c: "human" }, { t: "AI 要約", c: "ai" }, { t: "AI 重要事項抽出", c: "ai" },
-        { t: "AI リスク候補", c: "ai" }, { t: "AI 報告文下書き", c: "ai" }, { t: "人間 確認", c: "human" }, { t: "人間 判断", c: "human" },
+        { t: "入力", c: "human" }, { t: "AI 要約", c: "ai" }, { t: "AI 重要事項・リスク抽出", c: "ai" },
+        { t: "AI 報告文下書き", c: "ai" }, { t: "人間 確認", c: "human" }, { t: "人間 判断", c: "human" },
       ];
     } else if (biz.id === "meeting") {
       before = ["情報収集", "前回資料確認", "内容整理", "問題抽出", "議題作成", "資料化"];
       after = [
-        { t: "入力", c: "human" }, { t: "AI 事実整理", c: "ai" }, { t: "AI 差分抽出", c: "ai" },
-        { t: "AI 論点整理", c: "ai" }, { t: "AI 議題案", c: "ai" }, { t: "人間 確認", c: "human" }, { t: "人間 決定", c: "human" },
+        { t: "入力", c: "human" }, { t: "AI 事実・差分整理", c: "ai" }, { t: "AI 論点整理", c: "ai" },
+        { t: "AI 議題案", c: "ai" }, { t: "人間 確認", c: "human" }, { t: "人間 決定", c: "human" },
       ];
     } else {
       before = top.steps.map((s) => s.label);
       after = [
         { t: "入力", c: "human" },
-        ...top.steps.filter((s) => s.category !== "human").map((s) => ({ t: `AI ${s.label}`, c: "ai" })),
-        { t: "人間 確認", c: "human" }, { t: "人間 判断", c: "human" },
+        { t: "AI 整理・下書き", c: "ai" },
+        ...top.steps.filter((s) => s.category === "human").map((s) => ({ t: `人間 ${s.label}`, c: "human" })),
       ];
     }
-    const beforeHtml = before.map((t) => `<div class="flow-step human">${t}</div>`).join('<div class="flow-arrow-mini">↓</div>');
-    const afterHtml = after.map((s) => `<div class="flow-step ${s.c}">${s.t}</div>`).join('<div class="flow-arrow-mini">↓</div>');
+    const beforeHtml = before.map((t) =>
+      `<div class="flow-step human"><span class="flow-tag">YOU</span>${t}</div>`
+    ).join('<div class="flow-arrow-mini">↓</div>');
+    const afterHtml = after.map((s) =>
+      `<div class="flow-step ${s.c}"><span class="flow-tag">${s.c === "ai" ? "AUTO" : "YOU"}</span>${s.t}</div>`
+    ).join('<div class="flow-arrow-mini">↓</div>');
 
     return el(`
       <div class="section-block">
         <div class="section-title"><i data-lucide="git-compare"></i>業務フロー：BEFORE / AFTER</div>
         <div class="flow-compare">
-          <div class="flow-col before"><h3>BEFORE（現在）</h3><div class="flow-steps">${beforeHtml}</div></div>
-          <div class="flow-col after"><h3>AFTER（AI導入後）</h3><div class="flow-steps">${afterHtml}</div></div>
+          <div class="flow-col before"><h3>BEFORE（現在） ｜ ${before.length}工程すべて自分</h3><div class="flow-steps">${beforeHtml}</div></div>
+          <div class="flow-col after"><h3>AFTER（AI導入後） ｜ ${after.length}工程中 ${after.filter((s) => s.c === "ai").length}工程が自動</h3><div class="flow-steps">${afterHtml}</div></div>
         </div>
       </div>
     `);
@@ -1336,6 +1477,7 @@ ${(() => {
     return el(`
       <div class="section-block">
         <div class="section-title"><i data-lucide="calculator"></i>削減時間の根拠</div>
+        <p class="evidence-note">この試算の前提：選択した回答（レンジの代表値）をもとに、工程ごとのAI適用率に「AI活用度」「判断が必要な割合」による補正をかけて算出しています。実際の削減時間は業務内容により変動します。</p>
         <div class="evidence-card">${blocks}</div>
       </div>
     `);
@@ -1351,29 +1493,27 @@ ${(() => {
           <div class="prompt-unlock"><i data-lucide="unlock" style="width:14px;height:14px;"></i>NEW TOOL UNLOCKED</div>
           <div class="prompt-title">明日から使える AIプロンプト ｜ ${biz.name}</div>
           <div class="prompt-box" id="prompt-box"></div>
-          <button class="btn btn-primary copy-btn" id="btn-copy-prompt"><i data-lucide="copy" style="width:15px;height:15px;"></i>COPY PROMPT</button>
+          <div class="prompt-actions">
+            <button class="btn btn-primary copy-btn" id="btn-copy-prompt"><i data-lucide="copy" style="width:15px;height:15px;"></i>COPY PROMPT</button>
+            <button class="btn btn-ghost prompt-expand-btn" id="btn-expand-prompt"><i data-lucide="maximize-2" style="width:14px;height:14px;"></i>全文を表示</button>
+          </div>
         </div>
       </div>
     `);
     container.querySelector("#prompt-box").textContent = promptText;
+    const promptBox = container.querySelector("#prompt-box");
+    const expandBtn = container.querySelector("#btn-expand-prompt");
+    expandBtn.addEventListener("click", () => {
+      const expanded = promptBox.classList.toggle("expanded");
+      expandBtn.innerHTML = expanded
+        ? `<i data-lucide="minimize-2" style="width:14px;height:14px;"></i>折りたたむ`
+        : `<i data-lucide="maximize-2" style="width:14px;height:14px;"></i>全文を表示`;
+      icons();
+    });
     const copyBtn = container.querySelector("#btn-copy-prompt");
     copyBtn.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(promptText);
-      } catch (e) {
-        const ta = document.createElement("textarea");
-        ta.value = promptText;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-      }
-      copyBtn.innerHTML = `<i data-lucide="check" style="width:15px;height:15px;"></i>✓ コピーしました`;
-      icons();
-      setTimeout(() => {
-        copyBtn.innerHTML = `<i data-lucide="copy" style="width:15px;height:15px;"></i>COPY PROMPT`;
-        icons();
-      }, 2200);
+      await copyTextToClipboard(promptText);
+      flashButtonSuccess(copyBtn, '<i data-lucide="copy" style="width:15px;height:15px;"></i>COPY PROMPT');
     });
     return container;
   }
@@ -1408,7 +1548,47 @@ ${(() => {
   }
 
   /* ------------------------------------------------------------------
-   * 12. ROUTER
+   * 12. QUEST STEPPER（現在地を示すRPG風ステータスバー）
+   * ---------------------------------------------------------------- */
+
+  const STEPPER_STEPS = [
+    { key: "status", label: "STATUS", icon: "user" },
+    { key: "mission1", label: "MISSION 1", icon: "crosshair" },
+    { key: "questions", label: "MISSION 2+", icon: "sword" },
+    { key: "result", label: "RESULT", icon: "trophy" },
+  ];
+  const stepperEl = document.getElementById("quest-stepper");
+
+  function stepperIndexFor(screen) {
+    if (screen === "start") return -1;
+    if (screen === "analyzing") return 3;
+    const idx = STEPPER_STEPS.findIndex((s) => s.key === screen);
+    return idx === -1 ? 0 : idx;
+  }
+
+  function renderQuestStepper() {
+    const idx = stepperIndexFor(state.screen);
+    if (idx < 0) {
+      stepperEl.classList.add("hidden");
+      return;
+    }
+    stepperEl.classList.remove("hidden");
+    stepperEl.innerHTML = STEPPER_STEPS.map((s, i) => {
+      const done = i < idx;
+      const active = i === idx;
+      return `
+        <div class="stepper-item ${done ? "done" : ""} ${active ? "active" : ""}">
+          <span class="stepper-dot">${done ? '<i data-lucide="check"></i>' : i + 1}</span>
+          <span class="stepper-label">${s.label}</span>
+        </div>
+        ${i < STEPPER_STEPS.length - 1 ? '<div class="stepper-line"></div>' : ""}
+      `;
+    }).join("");
+    icons();
+  }
+
+  /* ------------------------------------------------------------------
+   * 13. ROUTER
    * ---------------------------------------------------------------- */
 
   const RENDERERS = {
@@ -1420,18 +1600,49 @@ ${(() => {
     result: renderResult,
   };
 
-  function goTo(screen) {
+  function goTo(screen, opts) {
+    opts = opts || {};
     state.screen = screen;
     saveState();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!opts.skipHistory) {
+      try { history.pushState({ screen }, "", "#" + screen); } catch (e) { /* ignore */ }
+    }
     RENDERERS[screen]();
+    renderQuestStepper();
   }
 
+  window.addEventListener("popstate", (e) => {
+    const target = (e.state && e.state.screen) || "start";
+    if (!RENDERERS[target] || target === state.screen) return;
+    // 診断途中のデータが失われている場合（例：直接URLを変更した等）は安全のためSTARTへ
+    if ((target === "questions" || target === "mission1" || target === "result") && !state.selectedBusinesses.length) {
+      goTo("start", { skipHistory: true });
+      return;
+    }
+    state.screen = target;
+    if (target === "result" && !state.resultCache) state.resultCache = computeAll();
+    RENDERERS[target]();
+    renderQuestStepper();
+  });
+
   /* ------------------------------------------------------------------
-   * 13. INIT
+   * 14. INIT（前回の続きがあれば自動的に再開する）
    * ---------------------------------------------------------------- */
 
   document.addEventListener("DOMContentLoaded", () => {
-    goTo("start");
+    const resume = loadState();
+    const resumableScreens = ["mission1", "questions", "analyzing", "result"];
+    if (resume && resume.selectedBusinesses && resume.selectedBusinesses.length && resumableScreens.includes(resume.screen)) {
+      state.selectedBusinesses = resume.selectedBusinesses;
+      state.answers = resume.answers || {};
+      state.qIndex = resume.qIndex || 0;
+      state.queue = buildQuestionQueue(state.selectedBusinesses);
+      const target = resume.screen === "analyzing" ? "result" : resume.screen;
+      if (target === "result") state.resultCache = computeAll();
+      goTo(target, { skipHistory: true });
+    } else {
+      goTo("start", { skipHistory: true });
+    }
   });
 })();

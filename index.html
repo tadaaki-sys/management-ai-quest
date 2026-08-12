@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>管理職AIクエスト ― 失われた時間を取り戻せ</title>
 <meta name="description" content="3分間の業務改善クエストで、AIに任せる仕事とあなたが判断する仕事を分解する、管理職向けAI業務削減診断">
+<meta name="theme-color" content="#0f1b3d">
+
+<!-- Favicon (inline SVG, no external asset) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f1b3d'/%3E%3Cpath d='M20 44 L44 20 M44 20 l-4 0 0 4 M44 20 l0 4 -4 0' stroke='%238fb0ff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3Cpath d='M20 44 l4 4 M20 44 l-2 6 6 -2' stroke='%237b5cff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+
+<!-- OGP / Twitter Card -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="管理職AIクエスト ― 失われた時間を取り戻せ">
+<meta property="og:description" content="3分間の業務改善クエストで、AIに任せる仕事とあなたが判断する仕事を分解する、管理職向けAI業務削減診断アプリ。">
+<meta property="og:url" content="https://tadaaki-sys.github.io/management-ai-quest/">
+<meta property="og:image" content="https://tadaaki-sys.github.io/management-ai-quest/assets/og-image.jpg">
+<meta property="og:site_name" content="管理職AIクエスト">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="管理職AIクエスト ― 失われた時間を取り戻せ">
+<meta name="twitter:description" content="3分間の業務改善クエストで、AIに任せる仕事とあなたが判断する仕事を分解する、管理職向けAI業務削減診断アプリ。">
+<meta name="twitter:image" content="https://tadaaki-sys.github.io/management-ai-quest/assets/og-image.jpg">
+
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
@@ -28,6 +46,7 @@
         <div class="gauge-value" id="gauge-value">算定中</div>
       </div>
     </div>
+    <div id="quest-stepper" class="quest-stepper hidden"></div>
   </header>
 
   <main id="screen-root" aria-live="polite"></main>
