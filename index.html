@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>管理職AIクエスト ― 失われた時間を取り戻せ</title>
+<meta name="description" content="3分間の業務改善クエストで、AIに任せる仕事とあなたが判断する仕事を分解する、管理職向けAI業務削減診断">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js" defer></script>
+<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.js" defer></script>
+</head>
+<body>
+
+<div id="app">
+
+  <header id="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <i data-lucide="swords" class="brand-icon"></i>
+        <span class="brand-text">管理職AIクエスト</span>
+      </div>
+      <div id="gauge-wrap" class="gauge-wrap hidden">
+        <div class="gauge-label" id="gauge-label">LOST TIME</div>
+        <div class="gauge-track">
+          <div class="gauge-fill" id="gauge-fill" style="width:0%"></div>
+        </div>
+        <div class="gauge-value" id="gauge-value">算定中</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="screen-root" aria-live="polite"></main>
+
+  <footer id="app-footer">
+    <span>登録不要・外部送信なし・データはこの端末のみに保存されます</span>
+  </footer>
+
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>
