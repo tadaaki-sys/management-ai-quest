@@ -354,7 +354,7 @@
       `週あたり ${minutesToHM(r.totalRecovered)} の時間を取り戻せる可能性があります`,
       `AI LEVEL ${r.level}「${r.levelLabel}」／TIME RECOVERY SCORE ${r.score}/100`,
       `称号：${r.achievement}`,
-      `最優先ターゲット：${topBiz.name}（${minutesToHM(top.recovered)} RECOVER）`,
+      `最初に討伐する敵：${topBiz.name}（${minutesToHM(top.recovered)} RECOVER）`,
     ].join("\n");
   }
 
@@ -911,7 +911,7 @@ ${(() => {
             <div class="status-item"><div class="k">時間奪還スコア</div><div class="v pending">???</div></div>
           </div>
         </div>
-        <p class="lead" style="margin-top:22px;">これから3分間のクエストで、あなたの「時間泥棒」を特定します。すべての項目は、あなたの回答から算出されます（自己申告や登録は不要です）。まずは戦う相手を選びましょう。</p>
+        <p class="lead" style="margin-top:22px;">これから3分間のクエストで、あなたの時間を喰らう魔物「<b>タイムイーター</b>」を特定します。すべての項目は、あなたの回答から算出されます（自己申告や登録は不要です）。まずは討伐する相手を選びましょう。</p>
         <div class="btn-row">
           <button class="btn btn-primary btn-block" id="btn-to-mission1">MISSION 1 へ進む <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
         </div>
@@ -939,13 +939,13 @@ ${(() => {
     const wrap = el(`
       <div class="screen">
         <div class="eyebrow"><i data-lucide="crosshair" style="width:14px;height:14px;"></i> MISSION 1</div>
-        <h2 class="title">時間泥棒を選択してください</h2>
-        <p class="lead">あなたの時間を奪っている業務を選んでください（複数選択可）</p>
+        <h2 class="title">討伐するタイムイーターを選べ</h2>
+        <p class="lead">あなたの時間を喰らっている業務が、討伐すべきタイムイーターです（複数選択可）</p>
         <div class="biz-grid" id="biz-grid"></div>
         <div class="quest-estimate" id="quest-estimate"></div>
         <div class="btn-row">
           <button class="btn btn-secondary" id="btn-back-status">戻る</button>
-          <button class="btn btn-primary" id="btn-mission1-next" disabled>この業務に挑む <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
+          <button class="btn btn-primary" id="btn-mission1-next" disabled>討伐に向かう <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
         </div>
       </div>
     `);
@@ -957,11 +957,11 @@ ${(() => {
     function updateEstimate() {
       const n = state.selectedBusinesses.length;
       if (n === 0) {
-        estimateBox.innerHTML = `<i data-lucide="info"></i>業務を選ぶと、想定の設問数と所要時間がここに表示されます`;
+        estimateBox.innerHTML = `<i data-lucide="info"></i>タイムイーターを選ぶと、想定の設問数と所要時間がここに表示されます`;
       } else {
         const qc = estimateQuestCount(state.selectedBusinesses);
         const mins = estimateQuestMinutes(state.selectedBusinesses);
-        estimateBox.innerHTML = `<i data-lucide="swords"></i>選択中：<b>${n}業務</b> ｜ 想定 <b>${qc}問</b> ｜ 目安 <b>約${mins}分</b>`;
+        estimateBox.innerHTML = `<i data-lucide="swords"></i>討伐対象：<b>${n}体</b> ｜ 想定 <b>${qc}問</b> ｜ 目安 <b>約${mins}分</b>`;
       }
       icons();
     }
@@ -1278,7 +1278,7 @@ ${(() => {
     }).join("");
     wrap.appendChild(el(`
       <div class="section-block">
-        <div class="section-title"><i data-lucide="trophy"></i>AI TRANSFORMATION RANKING</div>
+        <div class="section-title"><i data-lucide="trophy"></i>AI TRANSFORMATION RANKING ｜ 討伐推奨順</div>
         <div class="rank-list">${rankHtml}</div>
       </div>
     `));
@@ -1289,13 +1289,13 @@ ${(() => {
     const afterPct = clamp((top.after / (top.current || 1)) * 100, 4, 100);
     wrap.appendChild(el(`
       <div class="section-block">
-        <div class="section-title"><i data-lucide="flag"></i>最優先攻略ターゲット</div>
+        <div class="section-title"><i data-lucide="flag"></i>BOSS BATTLE ｜ 最初に討伐する敵</div>
         <div class="boss-card">
-          <div class="boss-tag">NEXT TARGET</div>
+          <div class="boss-tag">NEXT BOSS</div>
           <div class="boss-code">${topBiz.codename}</div>
           <div class="boss-name">${topBiz.name}</div>
           <div class="boss-hp-row">
-            <div class="boss-hp-label"><i data-lucide="clock"></i>WORKLOAD</div>
+            <div class="boss-hp-label"><i data-lucide="clock"></i>BOSS HP</div>
             <div class="boss-hp-track">
               <div class="boss-hp-fill" style="width:${afterPct}%"></div>
             </div>
