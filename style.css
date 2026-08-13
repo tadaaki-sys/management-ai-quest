@@ -133,7 +133,11 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 }
 
 /* ---------------- START ---------------- */
-.start-screen{text-align:center; padding-top:40px;}
+.start-screen{text-align:center; padding-top:24px;}
+.hero-banner{
+  width:100%; max-width:100%; height:auto; border-radius:var(--radius-lg); box-shadow:var(--shadow-md);
+  margin-bottom:22px; display:block;
+}
 .start-badge{
   display:inline-flex; align-items:center; gap:6px; background:var(--blue-soft); color:var(--blue);
   font-size:12px; font-weight:800; letter-spacing:.06em; padding:6px 14px; border-radius:999px; margin-bottom:18px;
@@ -187,12 +191,11 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 .biz-card:hover{border-color:var(--blue); box-shadow:var(--shadow-sm);}
 .biz-card.active{border-color:var(--blue); background:var(--blue-soft); box-shadow:var(--shadow-md);}
 .biz-card .biz-head{display:flex; align-items:flex-start; justify-content:space-between;}
-.biz-card .biz-icon-wrap{
-  width:40px; height:40px; border-radius:12px; background:var(--gray-100); color:var(--gray-600);
-  display:flex; align-items:center; justify-content:center; flex:none; transition:all .15s ease;
+.biz-card .biz-badge-img{
+  width:72px; height:72px; object-fit:contain; flex:none; filter:drop-shadow(0 3px 6px rgba(15,27,61,0.15));
+  transition:transform .15s ease;
 }
-.biz-card .biz-icon-wrap svg{width:20px; height:20px;}
-.biz-card.active .biz-icon-wrap{background:var(--ai-grad); color:#fff;}
+.biz-card.active .biz-badge-img{transform:scale(1.06);}
 .biz-card .codename{font-size:10px; font-weight:800; letter-spacing:.08em; color:var(--purple);}
 .biz-card .rank{font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px; background:var(--gray-100); color:var(--gray-600); white-space:nowrap;}
 .biz-card.active .rank{background:var(--blue); color:#fff;}
@@ -271,6 +274,10 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 }
 .result-hero::before{
   content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% -10%, rgba(123,92,255,0.35), transparent 60%);
+}
+.result-hero-img{
+  display:block; width:calc(100% + 48px); margin:-30px -24px 20px -24px;
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0; max-width:none;
 }
 .result-hero .rh-inner{position:relative;}
 .result-hero .quest-complete{font-size:12px; font-weight:800; letter-spacing:.18em; color:#8fb0ff; margin-bottom:10px;}

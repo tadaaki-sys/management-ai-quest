@@ -11,11 +11,11 @@
    * ---------------------------------------------------------------- */
 
   const BUSINESSES = [
-    { id: "weekly",  name: "部下の週報・日報取りまとめ", codename: "WEEKLY REPORT",  freq: "毎週",   rank: "S", icon: "file-text" },
-    { id: "meeting", name: "会議資料・議題作成",         codename: "MEETING MAKER",  freq: "毎週",   rank: "A", icon: "presentation" },
-    { id: "eval",    name: "部下の評価コメント",         codename: "EVALUATION NOTE",freq: "半期ごと", rank: "B", icon: "star" },
-    { id: "ringi",   name: "稟議・申請書",               codename: "APPROVAL DOC",   freq: "随時",   rank: "B", icon: "stamp" },
-    { id: "report",  name: "部門数字説明",               codename: "NUMBER REPORT",  freq: "月次",   rank: "B", icon: "bar-chart-3" },
+    { id: "weekly",  name: "部下の週報・日報取りまとめ", codename: "WEEKLY REPORT",  freq: "毎週",   rank: "S", icon: "file-text", badge: "assets/badge_weekly.webp" },
+    { id: "meeting", name: "会議資料・議題作成",         codename: "MEETING MAKER",  freq: "毎週",   rank: "A", icon: "presentation", badge: "assets/badge_meeting.webp" },
+    { id: "eval",    name: "部下の評価コメント",         codename: "EVALUATION NOTE",freq: "半期ごと", rank: "B", icon: "star", badge: "assets/badge_eval.webp" },
+    { id: "ringi",   name: "稟議・申請書",               codename: "APPROVAL DOC",   freq: "随時",   rank: "B", icon: "stamp", badge: "assets/badge_ringi.webp" },
+    { id: "report",  name: "部門数字説明",               codename: "NUMBER REPORT",  freq: "月次",   rank: "B", icon: "bar-chart-3", badge: "assets/badge_report.webp" },
   ];
   const BIZ_ORDER = ["weekly", "meeting", "eval", "ringi", "report"];
   const bizById = (id) => BUSINESSES.find((b) => b.id === id);
@@ -857,6 +857,7 @@ ${(() => {
     root.innerHTML = "";
     root.appendChild(el(`
       <div class="screen start-screen">
+        <img class="hero-banner" src="assets/hero.jpg" alt="管理職とAIアシスタントが業務を一緒に片付けているイラスト" width="1200" height="197">
         <div class="start-badge"><i data-lucide="sparkles" style="width:14px;height:14px;"></i> MANAGEMENT QUEST</div>
         <h1>あなたの管理業務、<br><span class="accent">AIなら週何時間減らせる？</span></h1>
         <p class="start-sub">3分間の業務改善クエストで、AIに任せる仕事と、あなたが判断する仕事を分解します。</p>
@@ -970,7 +971,7 @@ ${(() => {
       const card = el(`
         <button type="button" class="biz-card ${active ? "active" : ""}" data-id="${b.id}">
           <div class="biz-head">
-            <span class="biz-icon-wrap"><i data-lucide="${b.icon}"></i></span>
+            <img class="biz-badge-img" src="${b.badge}" alt="" width="72" height="72">
             <span class="check-badge"><i data-lucide="check"></i></span>
           </div>
           <span class="codename">${b.codename}</span>
@@ -1188,6 +1189,7 @@ ${(() => {
     // --- HERO ---
     wrap.appendChild(el(`
       <div class="result-hero">
+        <img class="result-hero-img" src="assets/result-banner.jpg" alt="" width="1200" height="246">
         <div class="rh-inner">
           <div class="quest-complete">QUEST COMPLETE / RESULT</div>
           <div class="big-number">+${minutesToHM(weeklyRecover)}</div>
