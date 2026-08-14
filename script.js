@@ -607,13 +607,29 @@
     else achievement = "TIME ARCHITECT";
 
     // 総合評価ランク（クエストクリア画面の S/A/B/C/D）
-    // TIME RECOVERY SCORE をそのまま段位に変換する
+    // TIME RECOVERY SCORE をそのまま段位に変換する。魔法使いのセリフもランクに応じて変化させる
+    // （どのランクでも「素晴らしい」と一律にせず、かつネガティブな表現は使わない）
     const RANKS = [
-      { rank: "S", min: 80, label: "完全攻略" },
-      { rank: "A", min: 65, label: "大勝利" },
-      { rank: "B", min: 50, label: "勝利" },
-      { rank: "C", min: 35, label: "善戦" },
-      { rank: "D", min: 0,  label: "討伐開始" },
+      {
+        rank: "S", min: 80, label: "完全攻略",
+        comment: ["素晴らしい！お見事だ！", "AIを完全に使いこなし、大きく時間を取り戻したな！", "その調子で、部門全体に広げていこう！"],
+      },
+      {
+        rank: "A", min: 65, label: "大勝利",
+        comment: ["大したものだ！", "AIをうまく使いこなし、しっかり時間を取り戻したぞ！", "この調子で、さらなる高みを目指そう！"],
+      },
+      {
+        rank: "B", min: 50, label: "勝利",
+        comment: ["よくやった！", "AIを使いこなし、時間を取り戻したぞ！", "次はもう一工程、AIに任せてみよう！"],
+      },
+      {
+        rank: "C", min: 35, label: "善戦",
+        comment: ["まずは一歩前進だ！", "AIに任せられる工程が、少し見えてきたな！", "焦らず、できるところから試してみよう！"],
+      },
+      {
+        rank: "D", min: 0, label: "討伐開始",
+        comment: ["ここからが始まりだ！", "時間を取り戻す旅は、まだ始まったばかりだぞ！", "小さな一歩が、大きな変化につながる！"],
+      },
     ];
     const rankInfo = RANKS.find((r) => score >= r.min);
 
@@ -632,7 +648,7 @@
     return {
       gf, businessResults, ranking, totalCurrent, totalAfter, totalRecovered,
       level, levelLabel: LEVEL_LABELS[level], score, achievement,
-      rank: rankInfo.rank, rankLabel: rankInfo.label,
+      rank: rankInfo.rank, rankLabel: rankInfo.label, wizardComment: rankInfo.comment,
       totalManagementTime, shareOfTotal, statusReveal,
     };
   }
@@ -1201,8 +1217,9 @@ ${(() => {
     const wrap = el(`<div class="screen"></div>`);
     root.appendChild(wrap);
 
-    // --- QUEST CLEAR 挿絵（時間・総合評価は実際の診断結果を重ねて表示）---
+    // --- QUEST CLEAR 挿絵（時間・総合評価・魔法使いのセリフは実際の診断結果を重ねて表示）---
     const barPct = clamp(r.score, 4, 100);
+    const wizardLines = r.wizardComment.map((line) => `<p>${line}</p>`).join("");
     wrap.appendChild(el(`
       <div class="quest-clear">
         <img class="quest-clear-img" src="assets/quest-clear.jpg"
@@ -1210,6 +1227,7 @@ ${(() => {
         <div class="qc-time">+${minutesToHM(weeklyRecover)}</div>
         <div class="qc-bar"><span style="width:${barPct}%"></span></div>
         <div class="qc-rank">${r.rank}</div>
+        <div class="qc-wizard">${wizardLines}</div>
       </div>
     `));
 
