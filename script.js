@@ -634,8 +634,12 @@
     const rankInfo = RANKS.find((r) => score >= r.min);
 
     // Q1（管理業務全体の時間）に対する、選択業務の占有率
+    // 比率は0〜1にクランプせず保持する。選択業務の合計がQ1の自己申告を上回るケース
+    // （回答が過小申告だった場合）を「約100%」で隠さず、そのままユーザーに伝えるため。
     const totalManagementTime = answers.common_time != null ? answers.common_time : totalCurrent;
-    const shareOfTotal = totalManagementTime > 0 ? clamp(totalCurrent / totalManagementTime, 0, 1) : null;
+    const shareRatio = totalManagementTime > 0 ? totalCurrent / totalManagementTime : null;
+    const shareOfTotal = shareRatio != null ? clamp(shareRatio, 0, 1) : null;
+    const shareExceeds = shareRatio != null && shareRatio > 1.05; // 誤差5%は許容
 
     // ステータス確定（STATUS画面で「???」だった項目の答え合わせ）
     const subsLabelMap = { 2: "1〜3人", 5: "4〜6人", 8.5: "7〜10人", 13: "11人以上" };
@@ -649,7 +653,7 @@
       gf, businessResults, ranking, totalCurrent, totalAfter, totalRecovered,
       level, levelLabel: LEVEL_LABELS[level], score, achievement,
       rank: rankInfo.rank, rankLabel: rankInfo.label, wizardComment: rankInfo.comment,
-      totalManagementTime, shareOfTotal, statusReveal,
+      totalManagementTime, shareOfTotal, shareRatio, shareExceeds, statusReveal,
     };
   }
 
@@ -1152,6 +1156,7 @@ ${(() => {
       if (state.qIndex === 0) { goTo("mission1"); return; }
       state.qIndex -= 1;
       saveState();
+      pushQuestionHistory();
       renderQuestion();
     });
     const nextBtn = wrap.querySelector("#btn-q-next");
@@ -1169,8 +1174,15 @@ ${(() => {
     if (state.qIndex >= state.queue.length) {
       goTo("analyzing");
     } else {
+      pushQuestionHistory();
       renderQuestion();
     }
+  }
+
+  // 設問1問ごとにhistoryへ積む。ブラウザの戻る/スワイプバックで
+  // 「1問だけ前に戻る」という、画面上の「戻る」ボタンと同じ挙動になるようにする。
+  function pushQuestionHistory() {
+    try { history.pushState({ screen: "questions", qIndex: state.qIndex }, "", "#questions"); } catch (e) { /* ignore */ }
   }
 
   /* ------------------------------------------------------------------
@@ -1209,8 +1221,10 @@ ${(() => {
     updateGauge({ label: "RECOVERED TIME", minutes: r.totalRecovered, max: 1200, recovered: true });
 
     const weeklyRecover = r.totalRecovered;
-    const monthlyRecover = weeklyRecover * 4.3;
+    // 年間48週稼働で統一。月換算は「年間換算 ÷ 12ヶ月」（週4.0週相当）とし、
+    // 月換算×12と年換算が食い違わないようにしている（週4.3換算だと年48週と矛盾するため）。
     const yearlyRecover = weeklyRecover * 48;
+    const monthlyRecover = yearlyRecover / 12;
     const yearlyDays = fmt1(yearlyRecover / 60 / 8);
 
     root.innerHTML = "";
@@ -1244,6 +1258,7 @@ ${(() => {
           </div>
           <div class="life-line">
             年間${minutesToHM(yearlyRecover)} ≒ 約${yearlyDays}営業日分。毎週${minutesToHM(weeklyRecover)}を、金曜17:00以降の仕事にあてる時間として取り戻せる可能性があります。
+            <span class="life-line-note">（年間48週稼働として算出。月換算は年換算÷12）</span>
           </div>
         </div>
       </div>
@@ -1280,7 +1295,9 @@ ${(() => {
     `));
 
     // --- Stat row ---
-    const shareLine = r.shareOfTotal != null
+    const shareLine = r.shareExceeds
+      ? `<div class="share-line warn"><i data-lucide="alert-triangle"></i>選択した業務の合計（${minutesToHM(r.totalCurrent)}/週）が、最初にお答えいただいた「1週間の管理業務時間」（${minutesToHM(r.totalManagementTime)}/週）を上回っています。実際の管理業務時間は、自己申告より多い可能性があります。</div>`
+      : r.shareOfTotal != null
       ? `<div class="share-line"><i data-lucide="pie-chart"></i>選択した業務は、あなたの管理業務全体（${minutesToHM(r.totalManagementTime)}/週の自己申告）のうち約<b>${Math.round(r.shareOfTotal * 100)}%</b>を占めています。</div>`
       : "";
     wrap.appendChild(el(`
@@ -1657,7 +1674,10 @@ ${(() => {
     saveState();
     window.scrollTo({ top: 0, behavior: "smooth" });
     if (!opts.skipHistory) {
-      try { history.pushState({ screen }, "", "#" + screen); } catch (e) { /* ignore */ }
+      // 設問画面は「今何問目か」もhistoryに含める。そうしないと、ブラウザの
+      // 戻る操作が「設問1問分」ではなく「MISSION全体」を一気に飛び越えてしまう。
+      const histState = screen === "questions" ? { screen, qIndex: state.qIndex } : { screen };
+      try { history.pushState(histState, "", "#" + screen); } catch (e) { /* ignore */ }
     }
     RENDERERS[screen]();
     renderQuestStepper();
@@ -1665,13 +1685,20 @@ ${(() => {
 
   window.addEventListener("popstate", (e) => {
     const target = (e.state && e.state.screen) || "start";
-    if (!RENDERERS[target] || target === state.screen) return;
+    if (!RENDERERS[target]) { goTo("start", { skipHistory: true }); return; }
     // 診断途中のデータが失われている場合（例：直接URLを変更した等）は安全のためSTARTへ
     if ((target === "questions" || target === "mission1" || target === "result") && !state.selectedBusinesses.length) {
       goTo("start", { skipHistory: true });
       return;
     }
+    // 同じ「questions」画面内でも、設問番号（qIndex）が変わっていれば再描画が必要。
+    // target === state.screen の場合に早期returnしていた旧実装だと、この
+    // ケースを取りこぼして「URLだけ変わって画面が変わらない」不具合の原因になっていた。
+    if (target === state.screen && target !== "questions") return;
     state.screen = target;
+    if (target === "questions" && e.state && typeof e.state.qIndex === "number") {
+      state.qIndex = clamp(e.state.qIndex, 0, Math.max(state.queue.length - 1, 0));
+    }
     if (target === "result" && !state.resultCache) state.resultCache = computeAll();
     RENDERERS[target]();
     renderQuestStepper();

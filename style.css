@@ -349,6 +349,7 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 .recover-sub .rs-box .k{font-size:11px; color:#9fb0e0; font-weight:700;}
 .recover-sub .rs-box .v{font-size:19px; font-weight:800; margin-top:2px;}
 .result-hero .life-line{margin-top:18px; font-size:13px; color:#dbe2f7; background:rgba(255,255,255,0.06); border-radius:10px; padding:10px 14px;}
+.life-line-note{display:block; margin-top:4px; font-size:11px; color:#8fa0d0;}
 
 .section-block{margin-top:28px;}
 .section-title{display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; margin:0 0 14px;}
@@ -367,6 +368,8 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 }
 .share-line svg{width:15px; height:15px; color:var(--blue); flex:none; margin-top:1px;}
 .share-line b{color:var(--navy);}
+.share-line.warn{background:var(--human-soft); color:#8a4315;}
+.share-line.warn svg{color:var(--human-orange);}
 
 .chart-card{background:var(--white); border:1px solid var(--gray-200); border-radius:var(--radius-lg); padding:18px; box-shadow:var(--shadow-sm);}
 .chart-card canvas{max-width:100%;}
