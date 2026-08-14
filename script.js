@@ -591,14 +591,13 @@
     };
 
     // TIME RECOVERY SCORE
-    const score = clamp(
-      Math.round(
-        (totalRecovered / 180) * 40 +
-        avgFormality * 30 +
-        (1 - gf.aiExp / 4) * 15 +
-        ((gf.easeMultiplier - 0.88) / 0.24) * 15
-      ), 0, 100
-    );
+    // 選択した業務"数"に左右されないよう、絶対時間ではなく比率（削減率・定型性・実行容易性）で評価する。
+    // 各項目は工程レベルの上限（削減率は最大72%／applyGlobal参照）を踏まえた現実的な満点ラインで正規化。
+    const reductionRate = totalCurrent > 0 ? totalRecovered / totalCurrent : 0;
+    const reductionScore = clamp(reductionRate / 0.55, 0, 1) * 40;   // 削減率55%で満点
+    const formalityScore2 = clamp(avgFormality / 0.7, 0, 1) * 30;    // 定型性0.7で満点
+    const easeScore2 = clamp((gf.easeMultiplier - 0.88) / 0.24, 0, 1) * 30; // AI活用度MAXで満点
+    const score = clamp(Math.round(reductionScore + formalityScore2 + easeScore2), 0, 100);
 
     // Achievement
     let achievement;
