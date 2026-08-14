@@ -135,8 +135,8 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 /* ---------------- START ---------------- */
 .start-screen{text-align:center; padding-top:24px;}
 .hero-banner{
-  width:100%; max-width:100%; height:auto; border-radius:var(--radius-lg); box-shadow:var(--shadow-md);
-  margin-bottom:22px; display:block;
+  width:100%; max-width:440px; height:auto; border-radius:var(--radius-lg); box-shadow:var(--shadow-md);
+  margin:0 auto 22px; display:block;
 }
 .start-badge{
   display:inline-flex; align-items:center; gap:6px; background:var(--blue-soft); color:var(--blue);
@@ -172,6 +172,14 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 .status-item .k{font-size:11px; color:#9fb0e0; font-weight:700; letter-spacing:.05em;}
 .status-item .v{font-size:20px; font-weight:800; margin-top:4px;}
 .status-item .v.pending{color:#7d8ac2; font-size:18px;}
+
+/* ---- 敵キャラ紹介（STATUS画面）---- */
+.enemy-reveal{text-align:center;}
+.enemy-reveal .eyebrow{justify-content:center; color:var(--danger);}
+.enemy-card{
+  width:100%; max-width:300px; height:auto; border-radius:var(--radius-md);
+  box-shadow:var(--shadow-md); display:block; margin:0 auto;
+}
 
 /* ---------------- MISSION progress ---------------- */
 .mission-head{margin-bottom:18px;}
@@ -275,11 +283,50 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 .result-hero::before{
   content:""; position:absolute; inset:0; background:radial-gradient(circle at 50% -10%, rgba(123,92,255,0.35), transparent 60%);
 }
-.result-hero-img{
-  display:block; width:calc(100% + 48px); margin:-30px -24px 20px -24px;
-  border-radius:var(--radius-lg) var(--radius-lg) 0 0; max-width:none;
-}
 .result-hero .rh-inner{position:relative;}
+
+/* ---- QUEST CLEAR 挿絵（焼き込み値を消した上に実データを重ねる）---- */
+.quest-clear{
+  position:relative; container-type:inline-size;
+  border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-md);
+  margin-bottom:18px; line-height:0;
+}
+.quest-clear-img{display:block; width:100%; height:auto;}
+
+/* 「時間回復量」の値 */
+.qc-time{
+  position:absolute; left:64.55%; top:33.63%; width:29.48%; height:10.85%;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  font-weight:900; white-space:nowrap; letter-spacing:-.01em;
+  font-size:22px; font-size:4.5cqi;
+  color:#f7d774; text-shadow:0 2px 0 rgba(0,0,0,.55), 0 0 8px rgba(247,215,116,.35);
+}
+/* 回復ゲージ（スコアに連動） */
+.qc-bar{
+  position:absolute; left:53.73%; top:43.94%; width:39.93%; height:4.34%;
+  border-radius:99px; background:rgba(0,0,0,.45); overflow:hidden;
+  border:1px solid #b8912f; box-sizing:border-box;
+}
+.qc-bar span{
+  display:block; height:100%; border-radius:99px;
+  background:linear-gradient(90deg,#6fdc86,#2fae57);
+  transform-origin:left center; animation:qcBar 1s cubic-bezier(.22,.9,.34,1) both;
+}
+@keyframes qcBar{ from{transform:scaleX(0);} to{transform:scaleX(1);} }
+/* 「総合評価」の段位 */
+.qc-rank{
+  position:absolute; left:68.84%; top:55.33%; width:10.07%; height:10.49%;
+  display:flex; align-items:center; justify-content:center; line-height:1;
+  font-weight:900; font-size:34px; font-size:7.4cqi;
+  color:#f7d774; text-shadow:0 2px 0 rgba(0,0,0,.6), 0 0 10px rgba(247,215,116,.45);
+  animation:qcRank .6s cubic-bezier(.2,1.5,.4,1) both;
+}
+@keyframes qcRank{ from{opacity:0; transform:scale(.3);} to{opacity:1; transform:scale(1);} }
+
+/* 演出を控えたい環境では、値が確実に見える静止状態にする */
+@media (prefers-reduced-motion: reduce){
+  .qc-bar span, .qc-rank, .boss-hp-fill{animation:none;}
+}
 .result-hero .quest-complete{font-size:12px; font-weight:800; letter-spacing:.18em; color:#8fb0ff; margin-bottom:10px;}
 .result-hero .big-number{font-size:44px; font-weight:900; letter-spacing:-.01em; background:var(--ai-grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
 .result-hero .big-number-label{font-size:13px; color:#c6d1f2; margin-top:6px;}
@@ -329,6 +376,16 @@ p.lead{color:var(--text-soft); font-size:15px; margin:0 0 20px;}
 .boss-card{
   background:linear-gradient(135deg, var(--navy), var(--navy-soft)); color:#fff; border-radius:var(--radius-lg);
   padding:22px; box-shadow:var(--shadow-md);
+}
+.boss-head{display:flex; align-items:center; gap:16px;}
+.boss-portrait{
+  width:96px; height:112px; object-fit:cover; flex:none;
+  border-radius:12px; border:2px solid rgba(255,255,255,0.18);
+  box-shadow:0 4px 14px rgba(0,0,0,0.35);
+}
+.boss-head-text{min-width:0;}
+@media(max-width:480px){
+  .boss-portrait{width:74px; height:88px;}
 }
 .boss-tag{font-size:11px; font-weight:800; letter-spacing:.14em; color:#ff9a6b;}
 .boss-code{font-size:11px; font-weight:800; color:#9fb0e0; letter-spacing:.1em; margin-top:6px;}

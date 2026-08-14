@@ -607,6 +607,17 @@
     else if (totalRecovered < 180) achievement = "AI委任マネージャー";
     else achievement = "TIME ARCHITECT";
 
+    // 総合評価ランク（クエストクリア画面の S/A/B/C/D）
+    // TIME RECOVERY SCORE をそのまま段位に変換する
+    const RANKS = [
+      { rank: "S", min: 80, label: "完全攻略" },
+      { rank: "A", min: 65, label: "大勝利" },
+      { rank: "B", min: 50, label: "勝利" },
+      { rank: "C", min: 35, label: "善戦" },
+      { rank: "D", min: 0,  label: "討伐開始" },
+    ];
+    const rankInfo = RANKS.find((r) => score >= r.min);
+
     // Q1（管理業務全体の時間）に対する、選択業務の占有率
     const totalManagementTime = answers.common_time != null ? answers.common_time : totalCurrent;
     const shareOfTotal = totalManagementTime > 0 ? clamp(totalCurrent / totalManagementTime, 0, 1) : null;
@@ -622,6 +633,7 @@
     return {
       gf, businessResults, ranking, totalCurrent, totalAfter, totalRecovered,
       level, levelLabel: LEVEL_LABELS[level], score, achievement,
+      rank: rankInfo.rank, rankLabel: rankInfo.label,
       totalManagementTime, shareOfTotal, statusReveal,
     };
   }
@@ -911,7 +923,11 @@ ${(() => {
             <div class="status-item"><div class="k">時間奪還スコア</div><div class="v pending">???</div></div>
           </div>
         </div>
-        <p class="lead" style="margin-top:22px;">これから3分間のクエストで、あなたの時間を喰らう魔物「<b>タイムイーター</b>」を特定します。すべての項目は、あなたの回答から算出されます（自己申告や登録は不要です）。まずは討伐する相手を選びましょう。</p>
+        <div class="enemy-reveal">
+          <div class="eyebrow" style="margin-top:26px;"><i data-lucide="skull" style="width:14px;height:14px;"></i> ENEMY</div>
+          <img class="enemy-card" src="assets/timeeater.jpg" alt="敵キャラクター タイムイーター：時計をまとった漆黒の魔物" width="560" height="895">
+        </div>
+        <p class="lead" style="margin-top:20px;">あなたの時間を喰らう魔物「<b>タイムイーター</b>」の正体は、毎週あなたの手を止めている<b>実在の業務</b>です。3分間のクエストでその居場所を特定します。すべての項目はあなたの回答から算出されます（自己申告や登録は不要です）。</p>
         <div class="btn-row">
           <button class="btn btn-primary btn-block" id="btn-to-mission1">MISSION 1 へ進む <i data-lucide="arrow-right" style="width:16px;height:16px;"></i></button>
         </div>
@@ -1186,10 +1202,21 @@ ${(() => {
     const wrap = el(`<div class="screen"></div>`);
     root.appendChild(wrap);
 
+    // --- QUEST CLEAR 挿絵（時間・総合評価は実際の診断結果を重ねて表示）---
+    const barPct = clamp(r.score, 4, 100);
+    wrap.appendChild(el(`
+      <div class="quest-clear">
+        <img class="quest-clear-img" src="assets/quest-clear.jpg"
+             alt="クエストクリア：AIを使いこなし時間を取り戻した管理職" width="760" height="784">
+        <div class="qc-time">+${minutesToHM(weeklyRecover)}</div>
+        <div class="qc-bar"><span style="width:${barPct}%"></span></div>
+        <div class="qc-rank">${r.rank}</div>
+      </div>
+    `));
+
     // --- HERO ---
     wrap.appendChild(el(`
       <div class="result-hero">
-        <img class="result-hero-img" src="assets/result-banner.jpg" alt="" width="1200" height="246">
         <div class="rh-inner">
           <div class="quest-complete">QUEST COMPLETE / RESULT</div>
           <div class="big-number">+${minutesToHM(weeklyRecover)}</div>
@@ -1291,9 +1318,14 @@ ${(() => {
       <div class="section-block">
         <div class="section-title"><i data-lucide="flag"></i>BOSS BATTLE ｜ 最初に討伐する敵</div>
         <div class="boss-card">
-          <div class="boss-tag">NEXT BOSS</div>
-          <div class="boss-code">${topBiz.codename}</div>
-          <div class="boss-name">${topBiz.name}</div>
+          <div class="boss-head">
+            <img class="boss-portrait" src="assets/timeeater-portrait.jpg" alt="" width="420" height="491">
+            <div class="boss-head-text">
+              <div class="boss-tag">NEXT BOSS</div>
+              <div class="boss-code">${topBiz.codename}</div>
+              <div class="boss-name">${topBiz.name}</div>
+            </div>
+          </div>
           <div class="boss-hp-row">
             <div class="boss-hp-label"><i data-lucide="clock"></i>BOSS HP</div>
             <div class="boss-hp-track">
